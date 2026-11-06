@@ -1,22 +1,10 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>AI Creative Agent</title>
-</head>
-<body>
-  <p id="status" role="status" aria-live="polite">채팅에 연결하는 중입니다...</p>
-  <div id="webchat" style="height: 600px"></div>
-  <script src="https://cdn.botframework.com/botframework-webchat/4.18.0/webchat.js"></script>
-  <script>
-    const BROKER_URL = "https://dl-broker-juwon-4jt3z.azurewebsites.net/api/directlineToken";
-    const SEALED = "bzJrP5K5678oa17BBg0ApHg0QlM0uT0mEuI2yOtVYOFg612zEYWVN2e6g-y-YQltiiakyyL6D_K5V9EK9C2jKDinnAgY4abphUvBU8DzB8nneAeD1sHXCkOsdHd1MLpW0tBgvPv_Ykq0PZXtAtqZoMNRkyjFR2QTVQiHakBNGZE8anmER-pHtetpAlNH2rooOhUEjZK6SdnuVSDRPjCckLnnS8ShUIKGFkqdsERaXOuEwMIobZr6OFn7tVa7SYywnYeOkpHuFjIBDY0DH4Txhv4ZozZl4xT35z3AnAu5Vkb0m7ZElu_zhdekMuzbZhH7uu3kS_LdVVxNINPvQxmo8BX7n9PaZE58UNPPxQgsmvmKUP8_F-2fvAbwZFjACXii9ys1Jvkshfl9d1NH6542TxzoXdOPMW_vNJk0WQkQmSckfIMITmYJoNhCMtNSD4eyUety67swjepTe8MN27BhXfCqQ5Nj0dLk03LEYpxXHkfFEivDfIyRKlgfdt3fWX6reCpU4mqST2aenkgoL7u8Ex4zBFpPxIcpQxuDiOvDDXaGWZiP6zj7C2wVNOPfYoTV8r7xYcrFzkvVtteegkugKIqQ76e2Pz99TZsH3B2llIroT_yBLiFUHdwHus-tcsTkbkYBS2sjgyBAY6vsDrTeIw";
-    const status = document.getElementById("status");
+NH6542TxzoXdOPMW_vNJk0WQkQmSckfIMITmYJoNhCMtNSD4eyUety67swjepTe8MN27BhXfCqQ5Nj0dLk03LEYpxXHkfFEivDfIyRKlgfdt3fWX6reCpU4mqST2aenkgoL7u8Ex4zBFpPxIcpQxuDiOvDDXaGWZiP6zj7C2wVNOPfYoTV8r7xYcrFzkvVtteegkugKIqQ76e2Pz99TZsH3B2llIroT_yBLiFUHdwHus-tcsTkbkYBS2sjgyBAY6vsDrTeIw";
 
     function showError(message) {
-      status.hidden = false;
-      status.textContent = message;
+      body.classList.remove("is-connected", "is-working");
+      body.classList.add("is-error");
+      input.disabled = true;
+      $(".chat-error-code").textContent = message;
     }
 
     async function connect() {
@@ -56,14 +44,27 @@
       }
 
       try {
+        store = WebChat.createStore({}, () => next => action => {
+          if (action.type === "DIRECT_LINE/CONNECT_FULFILLED") onConnected();
+          if (action.type === "DIRECT_LINE/INCOMING_ACTIVITY") {
+            const activity = action.payload && action.payload.activity;
+            if (activity && activity.from && activity.from.role !== "user" && activity.type === "message") onReply(activity);
+          }
+          return next(action);
+        });
         const directLine = WebChat.createDirectLine({ token: data.token });
-        status.hidden = true;
         directLine.postActivity({
           type: "event", name: "startConversation", from: { id: "user" }
         }).subscribe({
-          error: () => showError("첫 인사를 요청하지 못했습니다. 채팅창에 메시지를 입력해 주세요.")
+          error: () => { $(".chat-note").textContent = "첫 인사를 요청하지 못했습니다. 채팅창에 메시지를 입력해 주세요."; }
         });
-        WebChat.renderWebChat({ directLine, locale: "ko-KR" }, document.getElementById("webchat"));
+        const v = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+        WebChat.renderWebChat({
+          directLine,
+          store,
+          locale: "ko-KR",
+          styleOptions: { hideSendBox: true, rootHeight: "100%", backgroundColor: "transparent", primaryFont: v("--font-body"), bubbleBackground: "transparent", bubbleBorderWidth: 0, bubbleTextColor: v("--ink"), bubbleMaxWidth: 720, bubbleMinWidth: 0, bubbleFromUserBackground: v("--accent-soft"), bubbleFromUserTextColor: v("--ink"), bubbleFromUserBorderWidth: 0, bubbleFromUserBorderRadius: parseInt(v("--radius")) || 0, subtle: v("--muted"), accent: v("--accent") }
+        }, document.getElementById("webchat"));
       } catch {
         showError("채팅을 시작하지 못했습니다. 새로고침 후 다시 시도해 주세요.");
       }
